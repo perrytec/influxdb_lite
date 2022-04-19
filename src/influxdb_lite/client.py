@@ -9,8 +9,10 @@ class Client(InfluxDBClient):
         self.token = token
         self.org = org
         self.query_str = ''
+        self.measurement = None
 
     def query(self, measurement: Measurement):
+        self.measurement = measurement
         self.query_str = '\n'.join([f'from(bucket: "{measurement.bucket}")',
                                    f'|> filter(fn: (r) => r._measurement == "{measurement.name}")'])
         return self
@@ -21,11 +23,17 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def filter(self, by: str, value: (str, int, float)):
-        if by == 'tag':
-            query_list = self.query_str.split('\n')
-            query_list.append(f'|> filter(fn: (r) => r.tag == "{value}")')
-            self.query_str = '\n'.join(query_list)
-            return self
-        else:
-            raise TypeError(f"by {by} not recognized")
+    def filter(self, attr_dict: dict):
+        query_list = self.query_str.split('\n')
+        for attr in attr_dict:
+            if attr in self.measurement.tags:
+                query_list.append(f'|> filter(fn: (r) => r["{attr}"] == "{attr_dict[attr]}")')
+            elif attr in self.measurement.fields:
+                query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] == {attr_dict[attr]})')
+            else:
+                ValueError(f"Unrecognized attribute {attr} given in dictionary.")
+        self.query_str = '\n'.join(query_list)
+        return self
+
+    def all(self):
+        return self.query_api().query(query=self.query_str, org=self.org)
