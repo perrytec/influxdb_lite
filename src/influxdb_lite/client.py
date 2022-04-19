@@ -9,12 +9,12 @@ class Client(InfluxDBClient):
         self.org = org
         self.query_str = ''
 
-    def query(self, measurement):
+    def query(self, measurement: Measurement):
         self.query_str = '\n'.join([f'from(bucket: "{measurement.bucket}")',
                                    f'|> filter(fn: (r) => r._measurement == "{measurement.name}")'])
         return self
 
-    def range(self, interval):
+    def range(self, interval: int):
         query_list = self.query_str.split('\n')
         query_list.append(f'|> range(start: -{interval}d)')
         self.query_str = '\n'.join(query_list)
