@@ -21,3 +21,11 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def filter(self, by: str, value: (str, int, float)):
+        if by == 'tag':
+            query_list = self.query_str.split('\n')
+            query_list.append(f'|> filter(fn: (r) => r.tag == "{value}")')
+            self.query_str = '\n'.join(query_list)
+            return self
+        else:
+            raise TypeError(f"by {by} not recognized")
