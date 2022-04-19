@@ -24,12 +24,17 @@ class Client(InfluxDBClient):
         return self
 
     def filter(self, attr_dict: dict):
+        """ Adds filter statement to query. Receives an attribute dictionary in the format:
+        {'tag_1':[value_tag_1, operation], 'field_1':[value_field_1, operation], ...} for filtering based on
+        thresholds, where operation is a string in the list [==, >, <, >=, <=] """
         query_list = self.query_str.split('\n')
         for attr in attr_dict:
+            if not isinstance(attr_dict[attr], list):
+                raise TypeError(f"Unrecognized format {attr_dict[attr]}")
             if attr in self.measurement.tags:
-                query_list.append(f'|> filter(fn: (r) => r["{attr}"] == "{attr_dict[attr]}")')
+                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {attr_dict[attr][1]} "{attr_dict[attr][0]}")')
             elif attr in self.measurement.fields:
-                query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] == {attr_dict[attr]})')
+                query_list.append(f'|> filter(fn: (r) => r["_field"] {attr_dict[attr][1]} "{attr}" and r["_value"] == {attr_dict[attr][0]})')
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)
