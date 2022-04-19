@@ -1,4 +1,5 @@
 from influxdb_client import InfluxDBClient
+from influxdb_lite.measurement import Measurement
 
 
 class Client(InfluxDBClient):
@@ -16,7 +17,7 @@ class Client(InfluxDBClient):
 
     def range(self, interval: int):
         query_list = self.query_str.split('\n')
-        query_list.append(f'|> range(start: -{interval}d)')
+        query_list.insert(1, f'|> range(start: -{interval}d)')
         self.query_str = '\n'.join(query_list)
         return self
 
