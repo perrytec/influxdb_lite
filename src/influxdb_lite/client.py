@@ -68,6 +68,14 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def pivot(self, row_keys: list = None, column_keys: list = None, value_column: str = '_value'):
+        row_keys = ['_time'] if row_keys is None else row_keys
+        column_keys = ['_field'] if column_keys is None else column_keys
+        query_list = self.query_str.split('\n')
+        query_list.append(f'|> pivot(rowKey:{self._parse_list_into_str(row_keys)}, columnKey: {self._parse_list_into_str(column_keys)}, valueColumn: "{value_column}")')
+        self.query_str = '\n'.join(query_list)
+        return self
+
     def limit(self, lmt: int):
         query_list = self.query_str.split('\n')
         query_list.append(f'|> limit(n:{lmt})')
