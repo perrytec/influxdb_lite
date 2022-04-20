@@ -52,6 +52,12 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def limit(self, lmt: int):
+        query_list = self.query_str.split('\n')
+        query_list.append(f'|> limit(n:{lmt})')
+        self.query_str = '\n'.join(query_list)
+        return self
+
     def all(self):
         return self.query_api().query(query=self.query_str, org=self.org)
 
