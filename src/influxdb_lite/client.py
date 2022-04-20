@@ -46,6 +46,12 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def order_by(self, _list: list):
+        query_list = self.query_str.split('\n')
+        query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)})')
+        self.query_str = '\n'.join(query_list)
+        return self
+
     def all(self):
         return self.query_api().query(query=self.query_str, org=self.org)
 
@@ -55,3 +61,4 @@ class Client(InfluxDBClient):
         for _int in _list[:-1]:
             _str += f"\"{str(_int)}\","
         return _str + f"\"{str(_list[-1])}\"]"
+
