@@ -7,4 +7,7 @@ InfluxDB lite builds on top of the InfluxDB python client library.
 
 ## Dependencies ##
 influxdb-client
-configparser
+
+## Licence & Copyright ##
+
+Licensed under the [MIT License](LICENSE).
