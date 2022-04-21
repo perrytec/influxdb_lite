@@ -51,6 +51,21 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def _validate_range(self, interval: dict):
+        if interval.get('start', None) is None:
+            raise ValueError(f"Invalid start value. ")
+        elif isinstance(interval['start'], str):
+            pass
+        elif isinstance(interval['start'], dt.datetime):
+            interval['start'] = self._dt_to_RFC3339(interval['start'])
+            interval['stop'] = self._dt_to_RFC3339(interval.get('stop', None))
+        else:
+            raise ValueError(f"_type {type(interval['start'])} not recognized. ")
+
+        if interval.get('stop', None) is None:
+            interval['stop'] = 'now()'
+        return interval
+
     def filter(self, *args):
         """ Adds filter statement to query. Receives filters in the form Measurement.Tag == a, Measurement.Field == b,
         which get automatically parsed to tuples: ('tag1', '==', a), ('field1', '==', b)"""
