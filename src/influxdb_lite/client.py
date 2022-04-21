@@ -51,44 +51,15 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def _validate_range(self, interval: dict):
-        if interval.get('start', None) is None:
-            raise ValueError(f"Invalid start value. ")
-        elif isinstance(interval['start'], str):
-            pass
-        elif isinstance(interval['start'], dt.datetime):
-            interval['start'] = self._dt_to_RFC3339(interval['start'])
-            interval['stop'] = self._dt_to_RFC3339(interval.get('stop', None))
-        else:
-            raise ValueError(f"_type {type(interval['start'])} not recognized. ")
-
-        if interval.get('stop', None) is None:
-            interval['stop'] = 'now()'
-        return interval
-
-    def filter(self, attr_dict: dict):
-        """ Adds filter statement to query. Receives an attribute dictionary in the format:
-        {'tag_1':[value_tag_1, operation], 'field_1':[value_field_1, operation], ...} for filtering based on thresholds,
-        where operation is a string in the list [==, >, <, >=, <=, in].
-        * The 'in' operation for fields must be used in conjunction with the select method and only one field at a time
-         to work properly.
-        """
+    def filter(self, *args):
+        """ Adds filter statement to query. Receives filters in the form Measurement.Tag == a, Measurement.Field == b,
+        which get automatically parsed to tuples: ('tag1', '==', a), ('field1', '==', b)"""
         query_list = self.query_str.split('\n')
-        for attr in attr_dict:
-            if not isinstance(attr_dict[attr], list):
-                raise TypeError(f"Unrecognized format {attr_dict[attr]}")
-            op = attr_dict[attr][1]
-            value = attr_dict[attr][0]
+        for (attr, comparator, value) in args:
             if attr in self.measurement.tags:
-                if op != 'in':
-                    query_list.append(f'|> filter(fn: (r) => r["{attr}"] {op} "{value}")')
-                else:
-                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: "{self._parse_list_into_str(value)}"))')
+                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
             elif attr in self.measurement.fields:
-                if op != 'in':
-                    query_list.append(f'|> filter(fn: (r) => r["_field"] {op} "{attr}" and r["_value"] == {value})')
-                else:
-                    query_list.append(f'|> filter(fn: (r) => contains(value: r["_value"], set: {str(value)}))')
+                query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)
