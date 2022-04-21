@@ -13,7 +13,7 @@ class Client(InfluxDBClient):
         self.measurement = None
         self.select_list = ['_time']
 
-    def query(self, measurement: Measurement):
+    def query(self, measurement):
         """Defines the base query from the bucket and the name of the measurement selected. All the following
         methods need a base query to work. """
         self.measurement = measurement
