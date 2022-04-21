@@ -143,18 +143,18 @@ class Client(InfluxDBClient):
             if column not in self.select_list:
                 raise TypeError(f"Please include {column} in the select list.")
 
-    def _dt_to_RFC3339(self, datetime_obj: dt.datetime = dt.datetime.now(), format: str = 'short'):
+    def _dt_to_RFC3339(self, datetime_obj: dt.datetime = dt.datetime.now(), _format: str = 'long'):
         """Transform datetime object into string RFC3339 format (either in date, short or long format). Ignores
          timezone aware datetime objects. """
         if datetime_obj is not None:
             base = datetime_obj.isoformat()
             res = self._get_resolution(base)
             base = base.split('+')[0] if '+' in base else base
-            if format == 'date':
+            if _format == 'date':
                 return base.split('T')[0]
-            elif format == 'short':
+            elif _format == 'short':
                 return base[:-res-1] + 'Z' if res == 6 else base + 'Z'
-            elif format == 'long':
+            elif _format == 'long':
                 return base[:-res//2] + 'Z' if res == 6 else base + '.000Z'
             else:
                 raise ValueError("Enter a format from 1 to 3")
