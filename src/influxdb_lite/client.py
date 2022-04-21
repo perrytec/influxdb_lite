@@ -68,8 +68,11 @@ class Client(InfluxDBClient):
 
     def filter(self, attr_dict: dict):
         """ Adds filter statement to query. Receives an attribute dictionary in the format:
-        {'tag_1':[value_tag_1, operation], 'field_1':[value_field_1, operation], ...} for filtering based on
-        thresholds, where operation is a string in the list [==, >, <, >=, <=]. """
+        {'tag_1':[value_tag_1, operation], 'field_1':[value_field_1, operation], ...} for filtering based on thresholds,
+        where operation is a string in the list [==, >, <, >=, <=, in].
+        * The 'in' operation for fields must be used in conjunction with the select method and only one field at a time
+         to work properly.
+        """
         query_list = self.query_str.split('\n')
         for attr in attr_dict:
             if not isinstance(attr_dict[attr], list):
@@ -77,9 +80,15 @@ class Client(InfluxDBClient):
             op = attr_dict[attr][1]
             value = attr_dict[attr][0]
             if attr in self.measurement.tags:
-                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {op} "{value}")')
+                if op != 'in':
+                    query_list.append(f'|> filter(fn: (r) => r["{attr}"] {op} "{value}")')
+                else:
+                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: "{self._parse_list_into_str(value)}"))')
             elif attr in self.measurement.fields:
-                query_list.append(f'|> filter(fn: (r) => r["_field"] {op} "{attr}" and r["_value"] == {value})')
+                if op != 'in':
+                    query_list.append(f'|> filter(fn: (r) => r["_field"] {op} "{attr}" and r["_value"] == {value})')
+                else:
+                    query_list.append(f'|> filter(fn: (r) => contains(value: r["_value"], set: {str(value)}))')
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)
