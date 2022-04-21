@@ -13,6 +13,8 @@ class Client(InfluxDBClient):
         self.select_list = ['_time']
 
     def query(self, measurement: Measurement):
+        """Defines the base query from the bucket and the name of the measurement selected. All the following
+        methods need a base query to work. """
         self.measurement = measurement
         self.select_list += measurement.tags + measurement.fields
         self.query_str = '\n'.join([f'from(bucket: "{measurement.bucket}")',
@@ -20,8 +22,8 @@ class Client(InfluxDBClient):
         return self
 
     def select(self, _list: list):
-        """ Receives a list of fields to show in the query. If it's not called all the columns will be selected by
-         default"""
+        """ Receives a list of fields to show in resulting table of the query. If it's not called, all the columns
+        will be selected by default. """
         self.select_list = _list
         query_list = self.query_str.split('\n')
         range_idxs = [i for i in range(len(query_list)) if 'range' in query_list[i]]
@@ -31,6 +33,7 @@ class Client(InfluxDBClient):
         return self
 
     def range(self, interval: int):
+        """ Modifies the base query adding a specified range, in this case, {interval} days before the current time. """
         self._validate_selection(['_time'])
         query_list = self.query_str.split('\n')
         query_list.insert(1, f'|> range(start: -{interval}d)')
@@ -40,7 +43,7 @@ class Client(InfluxDBClient):
     def filter(self, attr_dict: dict):
         """ Adds filter statement to query. Receives an attribute dictionary in the format:
         {'tag_1':[value_tag_1, operation], 'field_1':[value_field_1, operation], ...} for filtering based on
-        thresholds, where operation is a string in the list [==, >, <, >=, <=] """
+        thresholds, where operation is a string in the list [==, >, <, >=, <=]. """
         query_list = self.query_str.split('\n')
         for attr in attr_dict:
             if not isinstance(attr_dict[attr], list):
@@ -55,6 +58,7 @@ class Client(InfluxDBClient):
         return self
 
     def group_by(self, _list: list):
+        """Group by the influxdb tables based on influxdb columns. """
         self._validate_selection(_list)
         query_list = self.query_str.split('\n')
         query_list.append(f'|> group(columns: {self._parse_list_into_str(_list)})')
@@ -62,6 +66,7 @@ class Client(InfluxDBClient):
         return self
 
     def order_by(self, _list: list):
+        """Sorts influxdb columns in descending order. """
         self._validate_selection(_list)
         query_list = self.query_str.split('\n')
         query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)})')
@@ -69,6 +74,8 @@ class Client(InfluxDBClient):
         return self
 
     def pivot(self, row_keys: list = None, column_keys: list = None, value_column: str = '_value'):
+        """Pivots a table based on row_keys, column_keys and a value_column. The default call pivots field sets into
+        a sql-like table. """
         row_keys = ['_time'] if row_keys is None else row_keys
         column_keys = ['_field'] if column_keys is None else column_keys
         query_list = self.query_str.split('\n')
@@ -77,12 +84,14 @@ class Client(InfluxDBClient):
         return self
 
     def limit(self, lmt: int):
+        """Limits the amount of results to {lmt}. """
         query_list = self.query_str.split('\n')
         query_list.append(f'|> limit(n:{lmt})')
         self.query_str = '\n'.join(query_list)
         return self
 
     def all(self):
+        """Executes the resulting query. """
         return self.query_api().query(query=self.query_str, org=self.org)
 
     @staticmethod
@@ -95,4 +104,4 @@ class Client(InfluxDBClient):
     def _validate_selection(self, _list):
         for column in _list:
             if column not in self.select_list:
-                raise TypeError(f"Please include {column} in select list.")
+                raise TypeError(f"Please include {column} in the select list.")

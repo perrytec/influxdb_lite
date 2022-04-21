@@ -8,6 +8,9 @@ class Measurement:
     timestamp_label = ''
 
     def check_insert(self, insert_dict: dict):
+        """Checks correct insertion of dictionaries in the format {tag_1: {field_1: value_1, field_2: value_2, ...}}
+        or the format {tag_1: {field_1: value_1, field_2: value_2, ...}}}
+        """
         if len(self.tags) == 1:
             for index in insert_dict:
                 self._check_fields(insert_dict[index])
