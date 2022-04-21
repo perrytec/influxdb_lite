@@ -67,8 +67,10 @@ class Client(InfluxDBClient):
         return interval
 
     def filter(self, *args):
-        """ Adds filter statement to query. Receives filters in the form Measurement.Tag == a, Measurement.Field == b,
-        which get automatically parsed to tuples: ('tag1', '==', a), ('field1', '==', b)"""
+        """ Adds filter statement to query. Receives filter statements in the form Measurement.Tag == a, ...
+        where the available operations are ==, >, <, >=, <= and the in_ function.
+        * The 'in_' operation for fields must be used in conjunction with the select method and only one field at a time
+         to work properly. """
         query_list = self.query_str.split('\n')
         for (attr, comparator, value) in args:
             if attr in self.measurement.tags:
