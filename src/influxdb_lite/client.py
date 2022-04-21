@@ -72,9 +72,15 @@ class Client(InfluxDBClient):
         query_list = self.query_str.split('\n')
         for (attr, comparator, value) in args:
             if attr in self.measurement.tags:
-                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
+                if comparator != 'in':
+                    query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
+                else:
+                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: "{self._parse_list_into_str(value)}"))')
             elif attr in self.measurement.fields:
-                query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
+                if comparator != 'in':
+                    query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
+                else:
+                    query_list.append(f'|> filter(fn: (r) => contains(value: r["_value"], set: {str(value)}))')
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)

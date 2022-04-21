@@ -29,6 +29,9 @@ class Base:
     def __le__(self, other):
         return self.name, '<=', other
 
+    def in_(self, other):
+        return self.name, 'in', other
+
 
 class Tag(Base):
     pass
