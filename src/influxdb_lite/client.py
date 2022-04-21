@@ -74,10 +74,12 @@ class Client(InfluxDBClient):
         for attr in attr_dict:
             if not isinstance(attr_dict[attr], list):
                 raise TypeError(f"Unrecognized format {attr_dict[attr]}")
+            op = attr_dict[attr][1]
+            value = attr_dict[attr][0]
             if attr in self.measurement.tags:
-                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {attr_dict[attr][1]} "{attr_dict[attr][0]}")')
+                query_list.append(f'|> filter(fn: (r) => r["{attr}"] {op} "{value}")')
             elif attr in self.measurement.fields:
-                query_list.append(f'|> filter(fn: (r) => r["_field"] {attr_dict[attr][1]} "{attr}" and r["_value"] == {attr_dict[attr][0]})')
+                query_list.append(f'|> filter(fn: (r) => r["_field"] {op} "{attr}" and r["_value"] == {value})')
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)
@@ -150,7 +152,8 @@ class Client(InfluxDBClient):
         else:
             return None
 
-    def _get_resolution(self, isoformat):
+    @staticmethod
+    def _get_resolution(isoformat):
         if len(isoformat.split('.')) == 1:
             return -1
         else:
