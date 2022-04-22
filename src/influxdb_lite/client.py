@@ -33,38 +33,33 @@ class Client(InfluxDBClient):
             range_idx, f'|> filter(fn: (r) => contains(value: r._field, set:{self._parse_list_into_str(_list)}))')
         return self
 
-    def range(self, interval: dict):
-        """ Modifies the base query adding a specified range. The format of the interval dictionary depends on the type
-        of range given, this can be either relative or absolute. If the datatype of interval['start'] is a string, the
-        type will relative and if it is a datetime object, it will be considered absolute. A combination of
-        interval['start'], interval['stop'] with different datatype will fail.
-
-        If the range is relative, interval accepts a dictionary in the format {'start': rr_start, 'stop': rr_stop} where
-        rr_start and rr_stop are relative range strings like -15d. If _type is 'absolute', interval accepts a dictionary
-        in the format {'start': dt_start, 'stop': datetime} where dt_start and dt_stop are datetime.datetime timezone
-        unaware objects. If 'stop' key is not present or its value is None, now() will be considered as default. If
-        'start' key is not present method will raise an error. """
+    def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
+        """ Modifies the base query adding a specified range. This range can be either relative or absolute, this depend
+         on the start argument datatype. If start is a string (for example: '-15d'), the type will be considered relative and if is
+         datetime or int, it will be considered absolute. A combination of 'start', 'stop' with different datatypes will
+          fail.
+        If 'stop' key is not present or its value is None, now() will be considered as default. If 'start' key is not
+        present method will raise an error. """
         self._validate_selection(['_time'])
         query_list = self.query_str.split('\n')
-        valid_interval = self._validate_range(interval)
-        query_list.insert(1, f"|> range(start: {valid_interval['start']}, stop: {valid_interval['stop']})")
+        v_start, v_stop = self._validate_range(start, stop)
+        query_list.insert(1, f"|> range(start: {v_start}, stop: {v_stop})")
         self.query_str = '\n'.join(query_list)
         return self
 
-    def _validate_range(self, interval: dict):
-        if interval.get('start', None) is None:
+    def _validate_range(self,  start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
+        if start is None:
             raise ValueError(f"Invalid start value. ")
-        elif isinstance(interval['start'], str):
+        elif isinstance(start, str) or isinstance(start, int):
             pass
-        elif isinstance(interval['start'], dt.datetime):
-            interval['start'] = self._dt_to_RFC3339(interval['start'])
-            interval['stop'] = self._dt_to_RFC3339(interval.get('stop', None))
+        elif isinstance(start, dt.datetime):
+            start = self._dt_to_RFC3339(start)
+            stop = self._dt_to_RFC3339(stop)
         else:
-            raise ValueError(f"_type {type(interval['start'])} not recognized. ")
-
-        if interval.get('stop', None) is None:
-            interval['stop'] = 'now()'
-        return interval
+            raise ValueError(f"_type {type(start)} not recognized. ")
+        if stop is None:
+            stop = 'now()'
+        return start, stop
 
     def filter(self, *args):
         """ Adds filter statement to query. Receives filter statements in the form Measurement.Tag == a, ...
