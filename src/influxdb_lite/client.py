@@ -77,7 +77,7 @@ class Client(InfluxDBClient):
                 if comparator != 'in':
                     query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
                 else:
-                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: "{self._parse_list_into_str(value)}"))')
+                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: {self._parse_list_into_str(value)}))')
             elif attr in self.measurement.fields:
                 if comparator != 'in':
                     query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
