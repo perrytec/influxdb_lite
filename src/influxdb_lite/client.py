@@ -96,11 +96,11 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def order_by(self, _list: list):
-        """Sorts influxdb columns in descending order. """
+    def order_by(self, _list: list, desc: bool):
+        """Sorts influxdb columns in descending or ascending order. """
         self._validate_selection(_list)
         query_list = self.query_str.split('\n')
-        query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)})')
+        query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)}, desc: {str(desc).lower()})')
         self.query_str = '\n'.join(query_list)
         return self
 
