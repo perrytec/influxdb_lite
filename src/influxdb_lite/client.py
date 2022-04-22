@@ -3,6 +3,7 @@ from influxdb_lite.measurement import Measurement
 import datetime as dt
 import time
 
+
 class Client(InfluxDBClient):
     def __init__(self, url: str, token: str, org: str, **kwargs):
         super().__init__(url=url, token=token, org=org, **kwargs)
