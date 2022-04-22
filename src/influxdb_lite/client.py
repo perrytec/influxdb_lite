@@ -1,7 +1,7 @@
 from influxdb_client import InfluxDBClient
 from influxdb_lite.measurement import Measurement
 import datetime as dt
-
+import time
 
 class Client(InfluxDBClient):
     def __init__(self, url: str, token: str, org: str, **kwargs):
@@ -152,8 +152,14 @@ class Client(InfluxDBClient):
                 return base[:-res//2] + 'Z' if res == 6 else base + '.000Z'
             else:
                 raise ValueError("Enter a format from 1 to 3")
-        else:
-            return None
+
+
+    def _dt_to_unix(self, datetime_obj: dt.datetime = dt.datetime.now()):
+        """Transform datetime object into string RFC3339 format (either in date, short or long format). Ignores
+         timezone aware datetime objects. """
+        if datetime_obj is not None:
+           return int(time.mktime(datetime_obj.timetuple()))
+
 
     @staticmethod
     def _get_resolution(isoformat):
