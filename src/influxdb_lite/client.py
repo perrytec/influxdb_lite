@@ -35,10 +35,10 @@ class Client(InfluxDBClient):
         return self
 
     def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
-        """ Modifies the base query adding a specified range. This range can be either relative or absolute, this depend
-         on the start argument datatype. If start is a string (for example: '-15d'), the type will be considered relative and if is
-         datetime or int, it will be considered absolute. A combination of 'start', 'stop' with different datatypes will
-          fail.
+        """ Modifies the base query adding a specified range. This range can be either relative or absolute, this will
+        depend on the start argument datatype. If start is a string (for example: '-15d'), the type will be considered
+        relative and if is datetime or int, it will be considered absolute. A combination of 'start', 'stop' with
+        different datatypes will fail.
         If 'stop' key is not present or its value is None, now() will be considered as default. If 'start' key is not
         present method will raise an error. """
         self._validate_selection(['_time'])
@@ -48,7 +48,7 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def _validate_range(self,  start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
+    def _validate_range(self,  start: (int, str, dt.datetime), stop: (int, str, dt.datetime)):
         if start is None:
             raise ValueError(f"Invalid start value. ")
         elif isinstance(start, str) or isinstance(start, int):
