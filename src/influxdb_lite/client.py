@@ -117,6 +117,13 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def last(self, column: str = '_value'):
+        """Returns the last non-null records from selected columns. """
+        query_list = self.query_str.split('\n')
+        query_list.append(f'|> last(column:"{column}")')
+        self.query_str = '\n'.join(query_list)
+        return self
+
     def all(self):
         """Executes the resulting query. """
         return self.query_api().query(query=self.query_str, org=self.org)
