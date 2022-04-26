@@ -1,5 +1,5 @@
 from influxdb_client import InfluxDBClient
-from influxdb_lite.measurement import Measurement
+from influxdb_client.client.write_api import ASYNCHRONOUS
 import datetime as dt
 import time
 
@@ -156,13 +156,12 @@ class Client(InfluxDBClient):
             else:
                 raise ValueError("Enter a format from 1 to 3")
 
-
-    def _dt_to_unix(self, datetime_obj: dt.datetime = dt.datetime.now()):
+    @staticmethod
+    def _dt_to_unix(datetime_obj: dt.datetime = dt.datetime.now()):
         """Transform datetime object into string RFC3339 format (either in date, short or long format). Ignores
          timezone aware datetime objects. """
         if datetime_obj is not None:
-           return int(time.mktime(datetime_obj.timetuple()))
-
+            return int(time.mktime(datetime_obj.timetuple()))
 
     @staticmethod
     def _get_resolution(isoformat):
@@ -170,3 +169,18 @@ class Client(InfluxDBClient):
             return -1
         else:
             return len(isoformat.split('.')[1])
+
+    def bulk_insert(self, measurements: list):
+        """ Receives a list of measurement objects and inserts them at the same time. """
+        sequence = [''] * len(measurements)
+        bucket = measurements[0].bucket
+        for i in range(len(measurements)):
+            values = measurements[i].get_values()
+            tag_set = ','.join([f"{tag}={values[tag]}" for tag in measurements[i].tags])
+            field_set = ','.join([f"{field}={values[field]}" for field in measurements[i].fields])
+            if measurements[i]._time.value is not None:
+                sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {measurements[i]._time.value}"
+            else:
+                sequence[i] = f"{measurements[i].name},{tag_set} {field_set}"
+        write_api = self.write_api(write_options=ASYNCHRONOUS)
+        write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence))
