@@ -4,6 +4,7 @@ class Base:
         self.name = kwargs.get('name', None)
         self.default = kwargs.get('default', None)
         self.is_nullable = kwargs.get('is_nullable', True)
+        self.value = None
 
     def validate(self, value):
         if value is None and self.default is None and not self.is_nullable:
@@ -11,8 +12,11 @@ class Base:
 
     def set_name(self, name: str):
         if self.name is not None and self.name != name:
-            raise AttributeError('Name duplicity: Two distinct names where given: %s and %s' % (self.name, name))
+            raise AttributeError(f'Name duplicity: Two distinct names where given: {self.name} and {name}')
         self.name = name
+
+    def set_value(self, value):
+        self.value = value
 
     def __eq__(self, other):
         return self.name, '==', other
