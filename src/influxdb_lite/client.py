@@ -178,8 +178,8 @@ class Client(InfluxDBClient):
             values = measurements[i].get_values()
             tag_set = ','.join([f"{tag}={values[tag]}" for tag in measurements[i].tags])
             field_set = ','.join([f"{field}={values[field]}" for field in measurements[i].fields])
-            if measurements[i]._time.value is not None:
-                sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {measurements[i]._time.value}"
+            if values.get('_time', None) is not None:
+                sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {values['_time']}"
             else:
                 sequence[i] = f"{measurements[i].name},{tag_set} {field_set}"
         write_api = self.write_api(write_options=ASYNCHRONOUS)
