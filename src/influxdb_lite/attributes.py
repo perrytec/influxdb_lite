@@ -4,7 +4,7 @@ class Base:
         self.name = kwargs.get('name', None)
         self.default = kwargs.get('default', None)
         self.is_nullable = kwargs.get('is_nullable', True)
-        self.value = None
+        self.value = kwargs.get('value', None)
 
     def validate(self, value):
         if value is None and self.default is None and not self.is_nullable:
