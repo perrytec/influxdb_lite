@@ -17,11 +17,8 @@ class Measurement(metaclass=MetaMeasurement):
 
     def __init__(self, **kwargs):
         for attribute in kwargs:
-            setattr(getattr(self, attribute), 'value', kwargs[attribute])
-        self.dict = {column: getattr(getattr(self, column), 'value') for column in self.columns}
+            cls = type(getattr(self, attribute))
+            setattr(self, attribute, cls(name=attribute, value=kwargs[attribute]))
 
     def get_values(self):
-        """Returns a dictionary in the format {column_1: value_1, column_2, value_2, ...} including all the tags,
-        fields and timestamp columns. """
-        return self.dict
-
+        return {column: getattr(getattr(self, column), 'value') for column in self.columns}
