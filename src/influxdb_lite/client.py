@@ -171,13 +171,18 @@ class Client(InfluxDBClient):
             return len(isoformat.split('.')[1])
 
     def bulk_insert(self, measurements: list):
-        """ Receives a list of measurement objects and inserts them at the same time. """
+        """ Receives a list of measurement objects and inserts them at the same time. At least one tag and one
+        field per measure are needed. Empty-valued tags or fields will not be included. """
         sequence = [''] * len(measurements)
         bucket = measurements[0].bucket
         for i in range(len(measurements)):
             values = measurements[i].get_values()
-            tag_set = ','.join([f"{tag}={values[tag]}" for tag in measurements[i].tags])
-            field_set = ','.join([f"{field}={values[field]}" for field in measurements[i].fields])
+            tag_set = ','.join([f"{tag}={values[tag]}"
+                                for tag in measurements[i].tags if values.get(tag, None) is not None])
+            field_set = ','.join([f"{field}={values[field]}"
+                                  for field in measurements[i].fields if values.get(field, None) is not None])
+            if tag_set == '' or field_set == '':
+                raise ValueError(f"Cannot insert zero fields nor tags in measurement number {i}. ")
             if values.get('_time', None) is not None:
                 sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {values['_time']}"
             else:
