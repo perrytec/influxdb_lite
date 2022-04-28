@@ -1,5 +1,6 @@
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import ASYNCHRONOUS
+from influxdb_client import WritePrecision
 import datetime as dt
 import time
 
@@ -170,9 +171,12 @@ class Client(InfluxDBClient):
         else:
             return len(isoformat.split('.')[1])
 
-    def bulk_insert(self, measurements: list):
+    def bulk_insert(self, measurements: list, precision: str = 'ns'):
         """ Receives a list of measurement objects and inserts them at the same time. At least one tag and one
-        field per measure are needed. Empty-valued tags or fields will not be included. """
+        field per measure are needed. Empty-valued tags or fields will not be included.
+        Sets the precision to either seconds (s), milliseconds (ms), microseconds(us) or nanoseconds (default).
+        Precision is set for all the batch inserted. timestamp has to be an int equal to the number of s, ms, us or ns
+        since epoch. For example use time.time_ns() for default precision and int(time.time()) for precision = 's'. """
         sequence = [''] * len(measurements)
         bucket = measurements[0].bucket
         for i in range(len(measurements)):
@@ -188,4 +192,5 @@ class Client(InfluxDBClient):
             else:
                 sequence[i] = f"{measurements[i].name},{tag_set} {field_set}"
         write_api = self.write_api(write_options=ASYNCHRONOUS)
-        write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence))
+        write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
+                        write_precision=getattr(WritePrecision, precision.upper()))
