@@ -123,7 +123,7 @@ class Client(InfluxDBClient):
         query_list = self.query_str.split('\n')
         query_list.append(f'|> last(column:"{column}")')
         self.query_str = '\n'.join(query_list)
-        return self
+        return self.all()
 
     def all(self):
         """Executes the resulting query. """
