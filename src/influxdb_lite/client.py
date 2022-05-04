@@ -127,7 +127,13 @@ class Client(InfluxDBClient):
 
     def all(self):
         """Executes the resulting query. """
-        return self.query_api().query(query=self.query_str, org=self.org)
+        return self.drop(['_start', '_stop']).query_api().query(query=self.query_str, org=self.org)
+
+    def drop(self, _list: list):
+        query_list = self.query_str.split('\n')
+        query_list.append(f'|> drop(columns:{self._parse_list_into_str(_list)})')
+        self.query_str = '\n'.join(query_list)
+        return self
 
     @staticmethod
     def _parse_list_into_str(_list):
