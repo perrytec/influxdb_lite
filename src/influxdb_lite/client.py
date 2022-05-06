@@ -27,12 +27,13 @@ class Client(InfluxDBClient):
     def select(self, _list: list):
         """ Receives a list of fields to show in resulting table of the query. If it's not called, all the columns
         will be selected by default. """
-        self.select_list = _list
+        self.select_list = _list if '_time' in _list else _list + ['_time']
         query_list = self.query_str.split('\n')
         range_idxs = [i for i in range(len(query_list)) if 'range' in query_list[i]]
         range_idx = 1 if not range_idxs else range_idxs[0]+1
         query_list.insert(
             range_idx, f'|> filter(fn: (r) => contains(value: r._field, set:{self._parse_list_into_str(_list)}))')
+        self.query_str = '\n'.join(query_list)
         return self
 
     def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
