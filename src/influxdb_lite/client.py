@@ -24,17 +24,26 @@ class Client(InfluxDBClient):
                                    f'|> filter(fn: (r) => r._measurement == "{measurement.name}")'])
         return self
 
-    def select(self, _list: list):
+    def select(self, *args):
         """ Receives a list of fields to show in resulting table of the query. If it's not called, all the columns
         will be selected by default. """
-        self.select_list = _list if '_time' in _list else _list + ['_time']
+        self._check_attr(args)
+        arg_names = [arg.name for arg in args]
+        self.select_list = arg_names if '_time' in arg_names else arg_names + ['_time']
         query_list = self.query_str.split('\n')
         range_idxs = [i for i in range(len(query_list)) if 'range' in query_list[i]]
         range_idx = 1 if not range_idxs else range_idxs[0]+1
         query_list.insert(
-            range_idx, f'|> filter(fn: (r) => contains(value: r._field, set:{self._parse_list_into_str(_list)}))')
+            range_idx,
+            f'|> filter(fn: (r) => contains(value: r._field, set:{self._parse_list_into_str(self.select_list)}))'
+        )
         self.query_str = '\n'.join(query_list)
         return self
+
+    def _check_attr(self, args):
+        for arg in args:
+            if arg.name not in self.measurement.fields:
+                raise ValueError(f"Field: {arg.name} is not present in measurement {self.measurement}")
 
     def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
         """ Modifies the base query adding a specified range. This range can be either relative or absolute, this will
