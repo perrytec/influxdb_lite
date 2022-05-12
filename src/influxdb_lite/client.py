@@ -145,6 +145,9 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
+    def to_dataframe(self):
+        return self.drop(['_start', '_stop']).query_api().query_data_frame(self.query_str)
+
     @staticmethod
     def _parse_list_into_str(_list):
         _str = "["
