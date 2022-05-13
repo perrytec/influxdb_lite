@@ -37,8 +37,42 @@ class Base:
         return self.name, 'in', other
 
 
+class GeneralAttr:
+    caster = None
+
+    @classmethod
+    def cast(cls, elem):
+        if not cls.caster:
+            return elem
+        try:
+            return cls.caster(elem)
+        except ValueError:
+            return elem
+
+
+class Integer(GeneralAttr):
+    caster = int
+
+
+class Float(GeneralAttr):
+    caster = float
+
+
+class String(GeneralAttr):
+    caster = str
+
+
+class Boolean(GeneralAttr):
+    caster = bool
+
+
 class Tag(Base):
-    pass
+    def __init__(self, _type: GeneralAttr = None, **kwargs):
+        super().__init__(**kwargs)
+        self._type = _type
+
+    def cast(self, elem):
+        return self._type.cast(elem)
 
 
 class Field(Base):
@@ -49,22 +83,5 @@ class Timestamp(Base):
     pass
 
 
-class GeneralAttr:
-    pass
 
-
-class Intattr(GeneralAttr):
-    pass
-
-
-class Floatattr(GeneralAttr):
-    pass
-
-
-class Strattr(GeneralAttr):
-    pass
-
-
-class Boolattr(GeneralAttr):
-    pass
 

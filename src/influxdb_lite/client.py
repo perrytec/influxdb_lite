@@ -139,7 +139,8 @@ class Client(InfluxDBClient):
 
     def all(self):
         """Executes the resulting query. """
-        return self.drop(['_start', '_stop']).query_api().query(query=self.query_str, org=self.org)
+        return self._tables_iterator(self.drop(['_start', '_stop']).query_api().query(query=self.query_str,
+                                                                                      org=self.org))
 
     def drop(self, _list: list):
         query_list = self.query_str.split('\n')
@@ -232,3 +233,16 @@ class Client(InfluxDBClient):
         write_api = self.write_api(write_options=ASYNCHRONOUS)
         write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
                         write_precision=getattr(WritePrecision, precision.upper()))
+
+    def _tables_iterator(self, tables):
+        """Implements a iterator over resulting tables of a query so that the user can easily iterate the resulting
+        rows"""
+        for table in tables:
+            for record in table.records:
+                yield self.cast_types(record.values)
+
+    def cast_types(self, values: dict):
+        for key in values:
+            if key in self.measurement.tags:
+                values[key] = getattr(self.measurement, key).cast(values[key])
+        return values
