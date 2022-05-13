@@ -73,7 +73,7 @@ class Client(InfluxDBClient):
             stop = 'now()'
         return start, stop
 
-    def filter(self, *args):
+    def filter(self, *args, method: str = 'contains'):
         """ Adds filter statement to query. Receives filter statements in the form Measurement.Tag == a, ...
         where the available operations are ==, >, <, >=, <= and the in_ function.
         * The 'in_' operation for fields must be used in conjunction with the select method and only one field at a time
@@ -84,7 +84,7 @@ class Client(InfluxDBClient):
                 if comparator != 'in':
                     query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
                 else:
-                    query_list.append(f'|> filter(fn: (r) => contains(value: r["{attr}"], set: {self._parse_list_into_str(value)}))')
+                    query_list.append(self._contain_or_or(column=attr, _list=value, method=method))
             elif attr in self.measurement.fields:
                 if comparator != 'in':
                     query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
@@ -148,12 +148,26 @@ class Client(InfluxDBClient):
     def to_dataframe(self):
         return self.drop(['_start', '_stop']).query_api().query_data_frame(self.query_str)
 
+    def _contain_or_or(self, column: str, _list: list, method: str = 'contains'):
+        if method == 'contains':
+            return f'|> filter(fn: (r) => contains(value: r.{column}, set:{self._parse_list_into_str(_list)}))'
+        elif method == 'or':
+            return self._parse_or_list(column, _list)
+        else:
+            ValueError(f"Unrecognized method: {method}")
+
     @staticmethod
     def _parse_list_into_str(_list):
         _str = "["
         for _int in _list[:-1]:
             _str += f"\"{str(_int)}\","
         return _str + f"\"{str(_list[-1])}\"]"
+
+    @staticmethod
+    def _parse_or_list(column, _list):
+        base_str = "|> filter(fn: (r) =>"
+        or_list = [f" r.{column} == \"{item}\" " for item in _list]
+        return base_str + "or".join(or_list) + ")"
 
     def _validate_selection(self, _list):
         for column in _list:
