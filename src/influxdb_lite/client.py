@@ -73,11 +73,13 @@ class Client(InfluxDBClient):
             stop = 'now()'
         return start, stop
 
-    def filter(self, *args, method: str = 'contains'):
+    def filter(self, *args, method: str = 'or'):
         """ Adds filter statement to query. Receives filter statements in the form Measurement.Tag == a, ...
-        where the available operations are ==, >, <, >=, <= and the in_ function.
+        where the available operations are ==, >, <, >=, <= and the in_ function. 'method' arg can be either 'contains'
+        or 'or'. Use or for optimized queries.
         * The 'in_' operation for fields must be used in conjunction with the select method and only one field at a time
-         to work properly. """
+         to work properly.
+        """
         query_list = self.query_str.split('\n')
         for (attr, comparator, value) in args:
             if attr in self.measurement.tags:
@@ -89,7 +91,7 @@ class Client(InfluxDBClient):
                 if comparator != 'in':
                     query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
                 else:
-                    query_list.append(f'|> filter(fn: (r) => contains(value: r["_value"], set: {str(value)}))')
+                    query_list.append(self._contain_or_or(column="_value", _list=value, method=method))
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
         self.query_str = '\n'.join(query_list)
@@ -150,7 +152,8 @@ class Client(InfluxDBClient):
 
     def _contain_or_or(self, column: str, _list: list, method: str = 'contains'):
         if method == 'contains':
-            return f'|> filter(fn: (r) => contains(value: r.{column}, set:{self._parse_list_into_str(_list)}))'
+            _set = self._parse_list_into_str(_list) if column in self.measurement.tags else str(_list)
+            return f'|> filter(fn: (r) => contains(value: r.{column}, set:{_set}))'
         elif method == 'or':
             return self._parse_or_list(column, _list)
         else:
@@ -163,10 +166,12 @@ class Client(InfluxDBClient):
             _str += f"\"{str(_int)}\","
         return _str + f"\"{str(_list[-1])}\"]"
 
-    @staticmethod
-    def _parse_or_list(column, _list):
+    def _parse_or_list(self, column, _list):
         base_str = "|> filter(fn: (r) =>"
-        or_list = [f" r.{column} == \"{item}\" " for item in _list]
+        if column in self.measurement.tags + ['_field']:
+            or_list = [f" r.{column} == \"{item}\" " for item in _list]
+        else:
+            or_list = [f" r.{column} == {item} " for item in _list]
         return base_str + "or".join(or_list) + ")"
 
     def _validate_selection(self, _list):
