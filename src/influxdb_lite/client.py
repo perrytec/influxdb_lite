@@ -59,10 +59,10 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def _validate_range(self,  start: (int, str, dt.datetime), stop: (int, str, dt.datetime)):
+    def _validate_range(self,  start: (int, float, str, dt.datetime), stop: (int, float, str, dt.datetime)):
         if start is None:
             raise ValueError(f"Invalid start value. ")
-        elif isinstance(start, str) or isinstance(start, int):
+        elif isinstance(start, str) or isinstance(start, int) or isinstance(start, float):
             pass
         elif isinstance(start, dt.datetime):
             start = self._dt_to_RFC3339(start)
