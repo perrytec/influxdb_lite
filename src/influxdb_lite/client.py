@@ -24,7 +24,7 @@ class Client(InfluxDBClient):
                                    f'|> filter(fn: (r) => r._measurement == "{measurement.name}")'])
         return self
 
-    def select(self, *args):
+    def select(self, *args, method: str = 'or'):
         """ Receives a list of fields to show in resulting table of the query. If it's not called, all the columns
         will be selected by default. """
         self._check_attr(args)
@@ -35,7 +35,7 @@ class Client(InfluxDBClient):
         range_idx = 1 if not range_idxs else range_idxs[0]+1
         query_list.insert(
             range_idx,
-            f'|> filter(fn: (r) => contains(value: r._field, set:{self._parse_list_into_str(self.select_list)}))'
+            self._contain_or_or(column="_field", _list=self.select_list, method=method)
         )
         self.query_str = '\n'.join(query_list)
         return self
