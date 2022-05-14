@@ -67,12 +67,14 @@ class Boolean(GeneralAttr):
 
 
 class Tag(Base):
-    def __init__(self, _type: GeneralAttr = None, **kwargs):
+    def __init__(self, _type: (GeneralAttr, Integer, Float, String, Boolean) = None, **kwargs):
         super().__init__(**kwargs)
         self._type = _type
 
     def cast(self, elem):
-        return self._type.cast(elem)
+        if self._type:
+            return self._type.cast(elem)
+        return elem
 
 
 class Field(Base):
