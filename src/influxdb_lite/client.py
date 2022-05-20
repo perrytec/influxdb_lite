@@ -30,7 +30,7 @@ class Client(InfluxDBClient):
     def select(self, *args, method: str = 'or'):
         """ Receives a list of fields to show in resulting table of the query. If it's not called, all the columns
         will be selected by default. """
-        self._check_attr(args)
+        self._check_attr(args, _type='fields')
         arg_names = [arg.name for arg in args]
         self.select_list = arg_names if '_time' in arg_names else arg_names + ['_time']
         query_list = self.query_str.split('\n')
@@ -43,9 +43,12 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def _check_attr(self, args):
+    def _check_attr(self, args, _type: str = 'columns'):
+        """Checks is args correspond to either fields, tags or columns"""
+        if _type not in ('columns', 'fields', 'tags'):
+            raise ValueError(f"Unrecognized type {_type} to check inside of. ")
         for arg in args:
-            if arg.name not in self.measurement.fields:
+            if arg.name not in getattr(self.measurement, _type):
                 raise ValueError(f"Field: {arg.name} is not present in measurement {self.measurement}")
 
     def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
@@ -141,10 +144,13 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def last(self, column: str = '_value'):
+    def last(self, *args):
         """Returns the last non-null records from selected columns. """
+        if len(args) != 1:
+            raise ValueError(f"Only one column can be used for last column. ")
+        self._check_attr(args)
         query_list = self.all(return_before_execute=True).query_str.split('\n')
-        query_list.append(f'|> last(column:"{column}")')
+        query_list.append(f'|> last(column:"{args[0].name}")')
         self.query_str = '\n'.join(query_list)
         return self._execute()
 
