@@ -66,6 +66,8 @@ class Client(InfluxDBClient):
             stop = 'now()'
         elif isinstance(stop, float):
             stop = int(stop)
+        elif isinstance(stop, int) or isinstance(stop, str):
+            pass
         elif isinstance(stop, dt.datetime):
             stop = self._dt_to_RFC3339(stop)
         else:
@@ -74,6 +76,8 @@ class Client(InfluxDBClient):
             raise ValueError(f"Invalid start value. ")
         elif isinstance(start, float):
             start = int(start)
+        elif isinstance(stop, int) or isinstance(stop, str):
+            pass
         elif isinstance(start, dt.datetime):
             start = self._dt_to_RFC3339(start)
         else:
