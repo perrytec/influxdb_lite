@@ -1,13 +1,16 @@
 from influxdb_client import InfluxDBClient
-from influxdb_client.client.write_api import ASYNCHRONOUS
+from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client import WritePrecision
+from influxdb_client.client.exceptions import InfluxDBError
 import datetime as dt
 import time
+import logging
 
 
 class Client(InfluxDBClient):
-    def __init__(self, url: str, token: str, org: str, **kwargs):
+    def __init__(self, url: str, token: str, org: str, name=__name__, **kwargs):
         super().__init__(url=url, token=token, org=org, **kwargs)
+        self.logger = logging.getLogger(name)
         self.url = url
         self.token = token
         self.org = org
@@ -210,7 +213,7 @@ class Client(InfluxDBClient):
         else:
             return len(isoformat.split('.')[1])
 
-    def bulk_insert(self, measurements: list, precision: str = 'ns'):
+    def bulk_insert(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
         """ Receives a list of measurement objects and inserts them at the same time. At least one tag and one
         field per measure are needed. Empty-valued tags or fields will not be included.
         Sets the precision to either seconds (s), milliseconds (ms), microseconds(us) or nanoseconds (default).
@@ -230,9 +233,15 @@ class Client(InfluxDBClient):
                 sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {values['_time']}"
             else:
                 sequence[i] = f"{measurements[i].name},{tag_set} {field_set}"
-        write_api = self.write_api(write_options=ASYNCHRONOUS)
-        write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
-                        write_precision=getattr(WritePrecision, precision.upper()))
+        if write_mode == 'SYNCHRONOUS':
+            with self.write_api(write_options=SYNCHRONOUS) as write_api:
+                write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
+                                write_precision=getattr(WritePrecision, precision.upper()))
+        elif write_mode == 'ASYNCHRONOUS':
+            with self.write_api(success_callback=self.on_success, error_callback=self.on_error,
+                                retry_callback=self.on_retry) as write_api:
+                write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
+                                write_precision=getattr(WritePrecision, precision.upper()))
 
     def _tables_iterator(self, tables):
         """Implements a iterator over resulting tables of a query so that the user can easily iterate the resulting
@@ -246,3 +255,12 @@ class Client(InfluxDBClient):
             if key in self.measurement.tags:
                 values[key] = getattr(self.measurement, key).cast(values[key])
         return values
+
+    def on_success(self, conf: (str, str, str), data: str):
+        self.logger.info(f"Written batch: {conf}, data: {data}")
+
+    def on_error(self, conf: (str, str, str), data: str, exception: InfluxDBError):
+        self.logger.error(f"Cannot write batch: {conf}, data: {data} due: {exception}")
+
+    def on_retry(self, conf: (str, str, str), data: str, exception: InfluxDBError):
+        self.logger.warning(f"Retryable error occurs for batch: {conf}, data: {data} retry: {exception}")
