@@ -143,19 +143,21 @@ class Client(InfluxDBClient):
 
     def last(self, column: str = '_value'):
         """Returns the last non-null records from selected columns. """
-        query_list = self.query_str.split('\n')
+        query_list = self.all(return_before_execute=True).query_str.split('\n')
         query_list.append(f'|> last(column:"{column}")')
         self.query_str = '\n'.join(query_list)
-        return self.all()
+        return self._execute()
 
-    def all(self):
-        return self._tables_iterator(self.drop(['_start', '_stop']).pivot().query_api().query(query=self.query_str,
-                                                                                              org=self.org))
+    def _execute(self):
+        return self._tables_iterator(self.query_api().query(query=self.query_str, org=self.org))
+
+    def all(self, return_before_execute: bool = False):
+        out = self.drop(['_start', '_stop']).pivot()
+        return out if return_before_execute else out._execute()
 
     def raw(self):
         """Executes the resulting query. """
-        return self._tables_iterator(self.drop(['_start', '_stop']).query_api().query(query=self.query_str,
-                                                                                      org=self.org))
+        return self.drop(['_start', '_stop'])._execute()
 
     def drop(self, _list: list):
         query_list = self.query_str.split('\n')
