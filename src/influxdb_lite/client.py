@@ -263,12 +263,15 @@ class Client(InfluxDBClient):
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
                                 write_precision=getattr(WritePrecision, precision.upper()))
 
-    def _tables_iterator(self, tables):
+    def _tables_iterator(self, tables, yield_result: bool = True):
         """Implements a iterator over resulting tables of a query so that the user can easily iterate the resulting
         rows"""
-        for table in tables:
-            for record in table.records:
-                yield self.cast_types(record.values)
+        if yield_result:
+            for table in tables:
+                for record in table.records:
+                    yield self.cast_types(record.values)
+        else:
+            return [self.cast_types(record.values) for table in tables for record in table.records]
 
     def cast_types(self, values: dict):
         for key in values:
