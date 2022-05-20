@@ -51,8 +51,7 @@ class Client(InfluxDBClient):
     def range(self, start: (int, str, dt.datetime), stop: (int, str, dt.datetime) = None):
         """ Modifies the base query adding a specified range. This range can be either relative or absolute, this will
         depend on the start argument datatype. If start is a string (for example: '-15d'), the type will be considered
-        relative and if is datetime or int, it will be considered absolute. A combination of 'start', 'stop' with
-        different datatypes will fail.
+        relative and if is datetime or int, it will be considered absolute.
         If 'stop' key is not present or its value is None, now() will be considered as default. If 'start' key is not
         present method will raise an error. """
         self._validate_selection(['_time'])
@@ -63,17 +62,22 @@ class Client(InfluxDBClient):
         return self
 
     def _validate_range(self,  start: (int, float, str, dt.datetime), stop: (int, float, str, dt.datetime)):
-        if start is None:
-            raise ValueError(f"Invalid start value. ")
-        elif isinstance(start, str) or isinstance(start, int) or isinstance(start, float):
-            pass
-        elif isinstance(start, dt.datetime):
-            start = self._dt_to_RFC3339(start)
-            stop = self._dt_to_RFC3339(stop)
-        else:
-            raise ValueError(f"_type {type(start)} not recognized. ")
         if stop is None:
             stop = 'now()'
+        elif isinstance(stop, float):
+            stop = int(stop)
+        elif isinstance(stop, dt.datetime):
+            stop = self._dt_to_RFC3339(stop)
+        else:
+            raise ValueError(f"_type {type(stop)} not recognized. ")
+        if start is None:
+            raise ValueError(f"Invalid start value. ")
+        elif isinstance(start, float):
+            start = int(start)
+        elif isinstance(start, dt.datetime):
+            start = self._dt_to_RFC3339(start)
+        else:
+            raise ValueError(f"_type {type(start)} not recognized. ")
         return start, stop
 
     def filter(self, *args, method: str = 'or'):
