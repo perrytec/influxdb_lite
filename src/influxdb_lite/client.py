@@ -149,6 +149,10 @@ class Client(InfluxDBClient):
         return self.all()
 
     def all(self):
+        return self._tables_iterator(self.drop(['_start', '_stop']).pivot().query_api().query(query=self.query_str,
+                                                                                              org=self.org))
+
+    def raw(self):
         """Executes the resulting query. """
         return self._tables_iterator(self.drop(['_start', '_stop']).query_api().query(query=self.query_str,
                                                                                       org=self.org))
