@@ -148,13 +148,11 @@ class Client(InfluxDBClient):
         self.query_str = '\n'.join(query_list)
         return self
 
-    def last(self, *args):
+    def last(self, field: Field = None):
         """Returns the last non-null records from selected columns. """
-        if len(args) != 1:
-            raise ValueError(f"Only one column can be used for last column. ")
-        self._check_attr(args)
         query_list = self.all(return_before_execute=True).query_str.split('\n')
-        query_list.append(f'|> last(column:"{args[0].name}")')
+        column = f'column:"{field.name}"' if field else ''
+        query_list.append(f'|> last({column})')
         self.query_str = '\n'.join(query_list)
         return self._execute()
 
