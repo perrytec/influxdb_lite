@@ -282,10 +282,10 @@ class Client(InfluxDBClient):
         return values
 
     def on_success(self, conf: (str, str, str), data: str):
-        self.logger.info(f"Written batch: {conf}, data: {data}")
+        pass
 
     def on_error(self, conf: (str, str, str), data: str, exception: InfluxDBError):
         self.logger.error(f"Cannot write batch: {conf}, data: {data} due: {exception}")
 
     def on_retry(self, conf: (str, str, str), data: str, exception: InfluxDBError):
-        self.logger.warning(f"Retryable error occurs for batch: {conf}, data: {data} retry: {exception}")
+        pass
