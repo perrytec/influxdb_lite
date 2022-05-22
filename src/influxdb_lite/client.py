@@ -243,16 +243,18 @@ class Client(InfluxDBClient):
         bucket = measurements[0].bucket
         for i in range(len(measurements)):
             values = measurements[i].get_values()
-            tag_set = ','.join([f"{tag}={values[tag]}"
-                                for tag in measurements[i].tags if values.get(tag, None) is not None])
-            field_set = ','.join([f"{field}={values[field]}"
-                                  for field in measurements[i].fields if values.get(field, None) is not None])
+            tag_set = ','.join(f'{tag}={values[tag]}'
+                               for tag in measurements[i].tags if values.get(tag, None) is not None)
+            field_set = ','.join(f'{field}="{values[field]}"'
+                                 if isinstance(values[field], str)
+                                 else f'{field}={values[field]}'
+                                 for field in measurements[i].fields if values.get(field, None) is not None)
             if tag_set == '' or field_set == '':
-                raise ValueError(f"Cannot insert zero fields nor tags in measurement number {i}. ")
+                raise ValueError(f'Cannot insert zero fields nor tags in measurement number {i}. ')
             if values.get('_time', None) is not None:
-                sequence[i] = f"{measurements[i].name},{tag_set} {field_set} {values['_time']}"
+                sequence[i] = f'{measurements[i].name},{tag_set} {field_set} {values["_time"]}'
             else:
-                sequence[i] = f"{measurements[i].name},{tag_set} {field_set}"
+                sequence[i] = f'{measurements[i].name},{tag_set} {field_set}'
         if write_mode == 'SYNCHRONOUS':
             with self.write_api(write_options=SYNCHRONOUS) as write_api:
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
