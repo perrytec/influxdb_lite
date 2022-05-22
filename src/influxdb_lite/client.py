@@ -15,17 +15,20 @@ class Client(InfluxDBClient):
         self.url = url
         self.token = token
         self.org = org
-        self.query_str = ''
+        self.query_list = []
         self.measurement = None
         self.select_list = ['_time']
+
+    def _query_str(self):
+        return '\n'.join(self.query_list)
 
     def query(self, measurement):
         """Defines the base query from the bucket and the name of the measurement selected. All the following
         methods need a base query to work. """
         self.measurement = measurement
         self.select_list += measurement.tags + measurement.fields
-        self.query_str = '\n'.join([f'from(bucket: "{measurement.bucket}")',
-                                   f'|> filter(fn: (r) => r._measurement == "{measurement.name}")'])
+        self.query_list = [f'from(bucket: "{measurement.bucket}")',
+                           f'|> filter(fn: (r) => r._measurement == "{measurement.name}")']
         return self
 
     def select(self, *args, method: str = 'or'):
@@ -34,23 +37,22 @@ class Client(InfluxDBClient):
         self._check_attr(args, _type='fields')
         arg_names = [arg.name for arg in args]
         self.select_list = arg_names if '_time' in arg_names else arg_names + ['_time']
-        query_list = self.query_str.split('\n')
-        range_idxs = [i for i in range(len(query_list)) if 'range' in query_list[i]]
+        range_idxs = [i for i in range(len(self.query_list)) if 'range' in self.query_list[i]]
         range_idx = 1 if not range_idxs else range_idxs[0]+1
-        query_list.insert(
+        self.query_list.insert(
             range_idx,
             self._contain_or_or(column="_field", _list=self.select_list, method=method)
         )
-        self.query_str = '\n'.join(query_list)
         return self
 
     def _check_attr(self, args, _type: str = 'columns'):
         """Checks is args correspond to either fields, tags or columns"""
         if _type not in ('columns', 'fields', 'tags'):
             raise ValueError(f"Unrecognized type {_type} to check inside of. ")
-        if not isinstance(args, (Field, Tag)):
-            raise AttributeError(f'The attributes passed should be an instance of the classes Tag or Field. Received '
-                                 f'{type(args)} instead.')
+        for arg in args:
+            if not isinstance(args, (Field, Tag)):
+                raise AttributeError(f'The attributes passed should be an instance of the classes Tag or Field. Received '
+                                     f'{type(args)} instead.')
         for arg in args:
             if arg.name not in getattr(self.measurement, _type):
                 raise ValueError(f"Field: {arg.name} is not present in measurement {self.measurement}")
@@ -62,10 +64,8 @@ class Client(InfluxDBClient):
         If 'stop' key is not present or its value is None, now() will be considered as default. If 'start' key is not
         present method will raise an error. """
         self._validate_selection(['_time'])
-        query_list = self.query_str.split('\n')
         v_start, v_stop = self._validate_range(start, stop)
-        query_list.insert(1, f"|> range(start: {v_start}, stop: {v_stop})")
-        self.query_str = '\n'.join(query_list)
+        self.query_list.insert(1, f"|> range(start: {v_start}, stop: {v_stop})")
         return self
 
     def _validate_range(self,  start: (int, float, str, dt.datetime), stop: (int, float, str, dt.datetime)):
@@ -98,37 +98,31 @@ class Client(InfluxDBClient):
         * The 'in_' operation for fields must be used in conjunction with the select method and only one field at a time
          to work properly.
         """
-        query_list = self.query_str.split('\n')
         for (attr, comparator, value) in args:
             if attr in self.measurement.tags:
                 if comparator != 'in':
-                    query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
+                    self.query_list.append(f'|> filter(fn: (r) => r["{attr}"] {comparator} "{value}")')
                 else:
-                    query_list.append(self._contain_or_or(column=attr, _list=value, method=method))
+                    self.query_list.append(self._contain_or_or(column=attr, _list=value, method=method))
             elif attr in self.measurement.fields:
                 if comparator != 'in':
-                    query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
+                    self.query_list.append(f'|> filter(fn: (r) => r["_field"] == "{attr}" and r["_value"] {comparator} {value})')
                 else:
-                    query_list.append(self._contain_or_or(column="_value", _list=value, method=method))
+                    self.query_list.append(self._contain_or_or(column="_value", _list=value, method=method))
             else:
                 ValueError(f"Unrecognized attribute {attr} given in dictionary.")
-        self.query_str = '\n'.join(query_list)
         return self
 
     def group_by(self, _list: list):
         """Group by the influxdb tables based on influxdb columns. """
         self._validate_selection(_list)
-        query_list = self.query_str.split('\n')
-        query_list.append(f'|> group(columns: {self._parse_list_into_str(_list)})')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> group(columns: {self._parse_list_into_str(_list)})')
         return self
 
     def order_by(self, _list: list, desc: bool):
         """Sorts influxdb columns in descending or ascending order. """
         self._validate_selection(_list)
-        query_list = self.query_str.split('\n')
-        query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)}, desc: {str(desc).lower()})')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> sort(columns: {self._parse_list_into_str(_list)}, desc: {str(desc).lower()})')
         return self
 
     def pivot(self, row_keys: list = None, column_keys: list = None, value_column: str = '_value'):
@@ -136,45 +130,42 @@ class Client(InfluxDBClient):
         a sql-like table. """
         row_keys = ['_time'] if row_keys is None else row_keys
         column_keys = ['_field'] if column_keys is None else column_keys
-        query_list = self.query_str.split('\n')
-        query_list.append(f'|> pivot(rowKey:{self._parse_list_into_str(row_keys)}, columnKey: {self._parse_list_into_str(column_keys)}, valueColumn: "{value_column}")')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> pivot(rowKey:{self._parse_list_into_str(row_keys)}, columnKey: {self._parse_list_into_str(column_keys)}, valueColumn: "{value_column}")')
         return self
 
     def limit(self, lmt: int):
         """Limits the amount of results to {lmt}. """
-        query_list = self.query_str.split('\n')
-        query_list.append(f'|> limit(n:{lmt})')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> limit(n:{lmt})')
         return self
 
     def last(self, field: Field = None):
-        """Returns the last non-null records from selected columns. """
-        query_list = self.all(return_before_execute=True).query_str.split('\n')
+        """Applies the last() command from FluxQL. """
         column = f'column:"{field.name}"' if field else ''
-        query_list.append(f'|> last({column})')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> last({column})')
+        return self
+
+    def exec(self):
+        return self.pivot()._execute()
+
+    def exec_raw(self):
         return self._execute()
 
     def _execute(self):
-        return self._tables_iterator(self.query_api().query(query=self.query_str, org=self.org))
+        return self._tables_iterator(self.query_api().query(query=self._query_str(), org=self.org))
 
-    def all(self, return_before_execute: bool = False):
-        out = self.drop(['_start', '_stop']).pivot()
-        return out if return_before_execute else out._execute()
+    def all(self):
+        return self.drop(['_start', '_stop']).exec()
 
     def raw(self):
         """Executes the resulting query. """
-        return self.drop(['_start', '_stop'])._execute()
+        return self.exec_raw()
 
     def drop(self, _list: list):
-        query_list = self.query_str.split('\n')
-        query_list.append(f'|> drop(columns:{self._parse_list_into_str(_list)})')
-        self.query_str = '\n'.join(query_list)
+        self.query_list.append(f'|> drop(columns:{self._parse_list_into_str(_list)})')
         return self
 
     def to_dataframe(self):
-        return self.drop(['_start', '_stop']).query_api().query_data_frame(self.query_str)
+        return self.drop(['_start', '_stop']).query_api().query_data_frame(self._query_str())
 
     def _contain_or_or(self, column: str, _list: list, method: str = 'contains'):
         if method == 'contains':
