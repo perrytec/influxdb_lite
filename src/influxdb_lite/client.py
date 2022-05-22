@@ -2,6 +2,7 @@ from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client import WritePrecision
 from influxdb_client.client.exceptions import InfluxDBError
+from influxdb_lite.attributes import Field, Tag
 import datetime as dt
 import time
 import logging
@@ -47,6 +48,9 @@ class Client(InfluxDBClient):
         """Checks is args correspond to either fields, tags or columns"""
         if _type not in ('columns', 'fields', 'tags'):
             raise ValueError(f"Unrecognized type {_type} to check inside of. ")
+        if not isinstance(args, (Field, Tag)):
+            raise AttributeError(f'The attributes passed should be an instance of the classes Tag or Field. Received '
+                                 f'{type(args)} instead.')
         for arg in args:
             if arg.name not in getattr(self.measurement, _type):
                 raise ValueError(f"Field: {arg.name} is not present in measurement {self.measurement}")
