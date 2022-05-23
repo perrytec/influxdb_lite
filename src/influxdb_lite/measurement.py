@@ -18,7 +18,8 @@ class Measurement(metaclass=MetaMeasurement):
     def __init__(self, **kwargs):
         for attribute in kwargs:
             cls = type(getattr(self, attribute))
-            setattr(self, attribute, cls(name=attribute, value=kwargs[attribute]))
+            _type = getattr(self, attribute)._type
+            setattr(self, attribute, cls(name=attribute, value=kwargs[attribute], _type=_type))
 
     def get_values(self):
         return {column: getattr(getattr(self, column), 'value') for column in self.columns}

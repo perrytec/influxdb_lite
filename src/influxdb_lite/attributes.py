@@ -68,8 +68,10 @@ class Boolean(GeneralAttr):
 
 class Tag(Base):
     def __init__(self, _type: (GeneralAttr, Integer, Float, String, Boolean) = None, **kwargs):
-        super().__init__(**kwargs)
         self._type = _type
+        if 'value' in kwargs:
+            kwargs['value'] = self.cast(kwargs['value'])
+        super().__init__(**kwargs)
 
     def cast(self, elem):
         if self._type:
@@ -78,7 +80,16 @@ class Tag(Base):
 
 
 class Field(Base):
-    pass
+    def __init__(self, _type: (GeneralAttr, Integer, Float, String, Boolean) = None, **kwargs):
+        self._type = _type
+        if 'value' in kwargs:
+            kwargs['value'] = self.cast(kwargs['value'])
+        super().__init__(**kwargs)
+
+    def cast(self, elem):
+        if self._type:
+            return self._type.cast(elem)
+        return elem
 
 
 class Timestamp(Base):
