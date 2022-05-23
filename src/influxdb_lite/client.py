@@ -155,7 +155,7 @@ class Client(InfluxDBClient):
 
     def raw(self):
         """Executes the resulting query. """
-        return self.exec_raw()
+        return self.drop(['_start', '_stop']).exec()
 
     def drop(self, _list: list):
         self.query_list.append(f'|> drop(columns:{self._parse_list_into_str(_list)})')
@@ -255,15 +255,12 @@ class Client(InfluxDBClient):
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
                                 write_precision=getattr(WritePrecision, precision.upper()))
 
-    def _tables_iterator(self, tables, yield_result: bool = True):
+    def _tables_iterator(self, tables):
         """Implements an iterator over resulting tables of a query so that the user can easily iterate the resulting
         rows"""
-        if yield_result:
-            for table in tables:
-                for record in table.records:
-                    yield self.cast_types(record.values)
-        else:
-            return [self.cast_types(record.values) for table in tables for record in table.records]
+        for table in tables:
+            for record in table.records:
+                yield self.cast_types(record.values)
 
     def cast_types(self, values: dict):
         for key in values:
