@@ -83,7 +83,7 @@ class Client(InfluxDBClient):
             raise ValueError(f"Invalid start value. ")
         elif isinstance(start, float):
             start = int(start)
-        elif isinstance(stop, int) or isinstance(stop, str):
+        elif isinstance(start, int) or isinstance(start, str):
             pass
         elif isinstance(start, dt.datetime):
             start = self._dt_to_RFC3339(start)
@@ -256,7 +256,7 @@ class Client(InfluxDBClient):
                                 write_precision=getattr(WritePrecision, precision.upper()))
 
     def _tables_iterator(self, tables, yield_result: bool = True):
-        """Implements a iterator over resulting tables of a query so that the user can easily iterate the resulting
+        """Implements an iterator over resulting tables of a query so that the user can easily iterate the resulting
         rows"""
         if yield_result:
             for table in tables:
