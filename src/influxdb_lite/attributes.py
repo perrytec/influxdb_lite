@@ -93,7 +93,7 @@ class Field(Base):
 
 
 class Timestamp(Base):
-    pass
+    _type = None
 
 
 
