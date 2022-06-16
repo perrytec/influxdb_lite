@@ -224,11 +224,20 @@ class Client(InfluxDBClient):
             return len(isoformat.split('.')[1])
 
     def bulk_insert(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
-        """ Receives a list of measurement objects and inserts them at the same time. At least one tag and one
+        """ Receives a list of measurement objects or dictionaries and inserts them in bulk. At least one tag and one
         field per measure are needed. Empty-valued tags or fields will not be included.
         Sets the precision to either seconds (s), milliseconds (ms), microseconds(us) or nanoseconds (default).
         Precision is set for all the batch inserted. timestamp has to be an int equal to the number of s, ms, us or ns
         since epoch. For example use time.time_ns() for default precision and int(time.time()) for precision = 's'. """
+        if isinstance(measurements[0], dict):
+            self._bulk_insert_dicts(measurements, precision=precision, write_mode=write_mode)
+        else:
+            self._bulk_insert_measurements(measurements, precision=precision, write_mode=write_mode)
+
+    def _bulk_insert_dicts(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
+        pass
+
+    def _bulk_insert_measurements(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
         sequence = [''] * len(measurements)
         bucket = measurements[0].bucket
         for i in range(len(measurements)):
