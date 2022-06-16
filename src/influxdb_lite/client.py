@@ -224,36 +224,58 @@ class Client(InfluxDBClient):
             return len(isoformat.split('.')[1])
 
     def bulk_insert(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
-        """ Receives a list of measurement objects or dictionaries and inserts them in bulk. At least one tag and one
+        """
+        Receives a list of measurement objects or dictionaries and inserts them in bulk. At least one tag and one
         field per measure are needed. Empty-valued tags or fields will not be included.
-        Sets the precision to either seconds (s), milliseconds (ms), microseconds(us) or nanoseconds (default).
-        Precision is set for all the batch inserted. timestamp has to be an int equal to the number of s, ms, us or ns
-        since epoch. For example use time.time_ns() for default precision and int(time.time()) for precision = 's'. """
+
+        measurements: Can be either measurement objects or dictionaries. Dictionaries expect 'bucket', 'name',
+                      'fields', 'tags' to be defined. '_time' can be optionally given. Fields and tags also expect
+                      dictionaries as an input.
+        precision:    Sets the precision to either seconds (s), milliseconds (ms), microseconds(us) or nanoseconds
+                      (default). Precision is set for all the batch inserted. timestamp has to be an int equal to the
+                      number of s, ms, us or ns since epoch. For example use time.time_ns() for default precision and
+                      int(time.time()) for precision = 's'.
+        """
         if isinstance(measurements[0], dict):
             self._bulk_insert_dicts(measurements, precision=precision, write_mode=write_mode)
         else:
             self._bulk_insert_measurements(measurements, precision=precision, write_mode=write_mode)
 
     def _bulk_insert_dicts(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
-        pass
+        sequence = []
+        bucket = measurements[0]['bucket']
+        for measure in measurements:
+            if bucket != measure['bucket']:
+                raise ValueError('Bulk insert is only supported for one bucket at a time')
+            tag_set = ','.join(f"{tag}={measure['tags'][tag]}" for tag in measure['tags'])
+            field_set = ','.join(f'{field}="{measure["fields"][field]}"' for field in measure['fields'])
+            if tag_set == '' or field_set == '':
+                raise ValueError(f'Cannot insert zero fields nor tags in measurement number {i}. ')
+            if measure.get('_time', None) is not None:
+                sequence.append(f'{measure.name},{tag_set} {field_set} {measure["_time"]}')
+            else:
+                sequence.append(f'{measure.name},{tag_set} {field_set}')
+        self._write_batch(bucket, sequence, precision=precision, write_mode=write_mode)
 
     def _bulk_insert_measurements(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
-        sequence = [''] * len(measurements)
+        sequence = []
         bucket = measurements[0].bucket
-        for i in range(len(measurements)):
-            values = measurements[i].get_values()
+        for measure in measurements:
+            if bucket != measure.bucket:
+                raise ValueError('Bulk insert is only supported for one bucket at a time')
+            values = measure.get_values()
             tag_set = ','.join(f'{tag}={values[tag]}'
-                               for tag in measurements[i].tags if values.get(tag, None) is not None)
+                               for tag in measure.tags if values.get(tag, None) is not None)
             field_set = ','.join(f'{field}="{values[field]}"'
                                  if isinstance(values[field], str)
                                  else f'{field}={values[field]}'
-                                 for field in measurements[i].fields if values.get(field, None) is not None)
+                                 for field in measure.fields if values.get(field, None) is not None)
             if tag_set == '' or field_set == '':
                 raise ValueError(f'Cannot insert zero fields nor tags in measurement number {i}. ')
             if values.get('_time', None) is not None:
-                sequence[i] = f'{measurements[i].name},{tag_set} {field_set} {values["_time"]}'
+                sequence.append(f'{measure.name},{tag_set} {field_set} {values["_time"]}')
             else:
-                sequence[i] = f'{measurements[i].name},{tag_set} {field_set}'
+                sequence.append(f'{measure.name},{tag_set} {field_set}')
         self._write_batch(bucket, sequence, precision=precision, write_mode=write_mode)
 
     def _write_batch(self, bucket: str, batch: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
