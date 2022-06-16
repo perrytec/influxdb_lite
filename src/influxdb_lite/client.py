@@ -248,13 +248,15 @@ class Client(InfluxDBClient):
             if bucket != measure['bucket']:
                 raise ValueError('Bulk insert is only supported for one bucket at a time')
             tag_set = ','.join(f"{tag}={measure['tags'][tag]}" for tag in measure['tags'])
-            field_set = ','.join(f'{field}="{measure["fields"][field]}"' for field in measure['fields'])
+            field_set = ','.join(f'{field}="{measure["fields"][field]}"'
+                                 if isinstance(measure["fields"][field], str)
+                                 else f'{field}={measure["fields"][field]}' for field in measure['fields'])
             if tag_set == '' or field_set == '':
-                raise ValueError(f'Cannot insert zero fields nor tags in measurement number {i}. ')
+                raise ValueError(f'Cannot insert zero fields in measurement.')
             if measure.get('_time', None) is not None:
-                sequence.append(f'{measure.name},{tag_set} {field_set} {measure["_time"]}')
+                sequence.append(f'{measure["name"]},{tag_set} {field_set} {measure["_time"]}')
             else:
-                sequence.append(f'{measure.name},{tag_set} {field_set}')
+                sequence.append(f'{measure["name"]},{tag_set} {field_set}')
         self._write_batch(bucket, sequence, precision=precision, write_mode=write_mode)
 
     def _bulk_insert_measurements(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
@@ -271,7 +273,7 @@ class Client(InfluxDBClient):
                                  else f'{field}={values[field]}'
                                  for field in measure.fields if values.get(field, None) is not None)
             if tag_set == '' or field_set == '':
-                raise ValueError(f'Cannot insert zero fields nor tags in measurement number {i}. ')
+                raise ValueError(f'Cannot insert zero fields in measurement.')
             if values.get('_time', None) is not None:
                 sequence.append(f'{measure.name},{tag_set} {field_set} {values["_time"]}')
             else:
