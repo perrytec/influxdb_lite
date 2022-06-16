@@ -245,14 +245,17 @@ class Client(InfluxDBClient):
                 sequence[i] = f'{measurements[i].name},{tag_set} {field_set} {values["_time"]}'
             else:
                 sequence[i] = f'{measurements[i].name},{tag_set} {field_set}'
+        self._write_batch(bucket, sequence, precision=precision, write_mode=write_mode)
+
+    def _write_batch(self, bucket: str, batch: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
         if write_mode == 'SYNCHRONOUS':
             with self.write_api(write_options=SYNCHRONOUS) as write_api:
-                write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
+                write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
         elif write_mode == 'ASYNCHRONOUS':
             with self.write_api(success_callback=self.on_success, error_callback=self.on_error,
                                 retry_callback=self.on_retry) as write_api:
-                write_api.write(bucket=bucket, org=self.org, record='\n'.join(sequence),
+                write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
 
     def _tables_iterator(self, tables):
