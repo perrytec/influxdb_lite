@@ -13,11 +13,16 @@ class MetaMeasurement(type):
 class Measurement(metaclass=MetaMeasurement):
     name = ''
     bucket = ''
+    accept_dynamic_fields = False  # Defines if to treat unkown columns as new fields or to raise an exception
     _time = Timestamp(name='_time')
 
     def __init__(self, **kwargs):
         for attribute in kwargs:
-            cls = type(getattr(self, attribute))
+            if self.accept_dynamic_fields and not hasattr(self, attribute):
+                cls = Field
+                self.columns += [attribute]
+            else:
+                cls = type(getattr(self, attribute))
             _type = getattr(self, attribute)._type
             setattr(self, attribute, cls(name=attribute, value=kwargs[attribute], _type=_type))
 
