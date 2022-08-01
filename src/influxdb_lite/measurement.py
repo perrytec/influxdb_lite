@@ -22,6 +22,7 @@ class Measurement(metaclass=MetaMeasurement):
                 cls = Field
                 _type = None
                 self.columns += [attribute]
+                self.fields += [attribute]
             else:
                 cls = type(getattr(self, attribute))
                 _type = getattr(self, attribute)._type
