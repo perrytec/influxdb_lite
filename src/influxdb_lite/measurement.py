@@ -20,10 +20,11 @@ class Measurement(metaclass=MetaMeasurement):
         for attribute in kwargs:
             if self.accept_dynamic_fields and not hasattr(self, attribute):
                 cls = Field
+                _type = None
                 self.columns += [attribute]
             else:
                 cls = type(getattr(self, attribute))
-            _type = getattr(self, attribute)._type
+                _type = getattr(self, attribute)._type
             setattr(self, attribute, cls(name=attribute, value=kwargs[attribute], _type=_type))
 
     def get_values(self):
