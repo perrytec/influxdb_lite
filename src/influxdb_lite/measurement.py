@@ -29,4 +29,4 @@ class Measurement(metaclass=MetaMeasurement):
             setattr(self, attribute, cls(name=attribute, value=kwargs[attribute], _type=_type))
 
     def get_values(self):
-        return {column: getattr(getattr(self, column), 'value') for column in self.columns}
+        return {column: getattr(getattr(self, column), 'value') for column in self.columns if hasattr(self, column)}
