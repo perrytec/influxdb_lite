@@ -251,12 +251,15 @@ class Client(InfluxDBClient):
             field_set = ','.join(f'{field}="{measure["fields"][field]}"'
                                  if isinstance(measure["fields"][field], str)
                                  else f'{field}={measure["fields"][field]}' for field in measure['fields'])
-            if tag_set == '' or field_set == '':
+            if field_set == '':
                 raise ValueError(f'Cannot insert zero fields in measurement.')
-            if measure.get('_time', None) is not None:
-                sequence.append(f'{measure["name"]},{tag_set} {field_set} {measure["_time"]}')
-            else:
-                sequence.append(f'{measure["name"]},{tag_set} {field_set}')
+            msg = f'{measure["name"]}'
+            if tag_set:
+                msg += f',{tag_set}'
+            msg += f' {field_set}'
+            if measure.get('_time') is not None:
+                msg += f' {measure["_time"]}'
+            sequence.append(msg)
         self._write_batch(bucket, sequence, precision=precision, write_mode=write_mode)
 
     def _bulk_insert_measurements(self, measurements: list, precision: str = 'ns', write_mode: str = 'SYNCHRONOUS'):
