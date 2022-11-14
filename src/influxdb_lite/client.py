@@ -315,3 +315,6 @@ class Client(InfluxDBClient):
 
     def on_retry(self, conf: (str, str, str), data: str, exception: InfluxDBError):
         pass
+
+    def check_health(self):
+        return self.ping()
