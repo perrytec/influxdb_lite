@@ -289,10 +289,13 @@ class Client(InfluxDBClient):
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
         elif write_mode == 'ASYNCHRONOUS':
+            before = time.time()
             with self.write_api(write_options=ASYNCHRONOUS, success_callback=self.on_success,
                                 error_callback=self.on_error, retry_callback=self.on_retry) as write_api:
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
+            after = time.time()
+            self.logger.info(f'ASYNC TIME {after-before}')
 
     def _tables_iterator(self, tables):
         """Implements an iterator over resulting tables of a query so that the user can easily iterate the resulting
