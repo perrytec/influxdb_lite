@@ -1,5 +1,5 @@
 from influxdb_client import InfluxDBClient
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.client.write_api import ASYNCHRONOUS, SYNCHRONOUS
 from influxdb_client import WritePrecision
 from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_lite.attributes import Field, Tag
@@ -289,8 +289,8 @@ class Client(InfluxDBClient):
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
         elif write_mode == 'ASYNCHRONOUS':
-            with self.write_api(success_callback=self.on_success, error_callback=self.on_error,
-                                retry_callback=self.on_retry) as write_api:
+            with self.write_api(write_options=ASYNCHRONOUS, success_callback=self.on_success,
+                                error_callback=self.on_error, retry_callback=self.on_retry) as write_api:
                 write_api.write(bucket=bucket, org=self.org, record='\n'.join(batch),
                                 write_precision=getattr(WritePrecision, precision.upper()))
 
